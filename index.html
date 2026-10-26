@@ -76,22 +76,31 @@
   .hidden{display:none!important}
   .link{background:none;border:0;color:var(--p2);cursor:pointer;font-weight:600;text-decoration:underline;font-size:.92rem}
   @media(max-width:600px){.hero h1{font-size:1.7rem}}
+
+header.top{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#0f172a;color:#fff;position:sticky;top:0;z-index:60}
+#burger{background:none;border:0;display:flex;flex-direction:column;gap:5px;padding:8px;cursor:pointer}
+#burger span{width:26px;height:3px;background:#fff;border-radius:3px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70}
+#drawer{position:fixed;top:0;left:0;bottom:0;width:290px;max-width:85vw;background:var(--white);z-index:80;transform:translateX(-105%);transition:.25s;padding:18px;overflow-y:auto;box-shadow:6px 0 24px rgba(0,0,0,.3)}
+#drawer.open{transform:none}
+#drawer .it{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:12px;border-radius:10px;cursor:pointer;font-size:1rem;color:var(--dark)}
+#drawer .it:hover,#drawer .it.on{background:var(--p);color:#fff}
+#drawer select{margin-top:6px}
+.av{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem}
+.av.big{width:110px;height:110px;font-size:2.4rem;margin:auto}
+.sep{border:0;border-top:1px solid #e2e8f066;margin:12px 0}
+[data-theme=dark]{--light:#0b1220;--white:#1e293b;--dark:#e2e8f0;--gray:#94a3b8}
+[data-theme=dark] header.top,[data-theme=dark] footer{background:#020617}
+[data-theme=dark] input,[data-theme=dark] textarea,[data-theme=dark] select,[data-theme=dark] th,[data-theme=dark] table,[data-theme=dark] #bot,[data-theme=dark] #bot-msgs,[data-theme=dark] .m.bot{background:#0f172a;color:#e2e8f0;border-color:#334155}
+[data-theme=dark] .module .body{color:#cbd5e1}
+select{width:100%;padding:11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:1rem;background:var(--white);color:var(--dark)}
+.eq{width:100%;padding:12px 14px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:1rem;font-family:inherit;background:var(--white);color:var(--dark)}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="nav">
-    <div class="logo">🚀 Formation Fiverr MG</div>
-    <nav class="nav-links">
-      <button data-view="accueil" class="active">Accueil</button>
-      <button data-view="formation">Formation</button>
-      <button data-view="sites">Sites utiles</button>
-      <button data-view="espace">Espace élève</button>
-      <button data-view="admin">Admin</button>
-    </nav>
-  </div>
-</header>
+<header class="top"><button id="burger" data-act="menu" aria-label="Menu"><span></span><span></span><span></span></button><div class="logo">🚀 Formation Fiverr MG</div></header>
+<div id="ov" class="ov hidden" data-act="menu"></div><aside id="drawer"></aside>
 
 <main id="app"></main>
 
@@ -612,6 +621,11 @@ function authForms(){
       <label>Nom complet</label><input name="nom" required>
       <label>Email</label><input name="email" type="email" required>
       <label>Mot de passe (6 caractères minimum)</label><input name="mdp" type="password" minlength="6" required>
+      <p style="margin:16px 0 0;font-weight:700">💻 Votre matériel</p>
+      <label>Appareil principal</label><select class="eq" name="eqApp"><option>Téléphone</option><option>Ordinateur</option><option>Téléphone et ordinateur</option></select>
+      <label>Connexion internet</label><select class="eq" name="eqNet"><option>Wi-Fi</option><option>Données mobiles</option><option>Wi-Fi et données mobiles</option></select>
+      <label>Opérateur</label><select class="eq" name="eqOp"><option>Yas/Telma</option><option>Orange</option><option>Airtel</option><option>Autre</option></select>
+      <label>Électricité</label><select class="eq" name="eqEl"><option>Stable</option><option>Coupures fréquentes</option></select>
       <button class="btn full" type="button" data-act="submit">Créer mon compte</button>
     </form>`;
   if (authTab === "forgot") corps = `
@@ -826,7 +840,7 @@ async function inscription(f){
   if (users.some(u => u.email === email)) {
     msg = {type:"err", text:"Cet email est déjà inscrit. Connectez-vous."}; return render();
   }
-  const u = {id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), nom: f.nom.value.trim(), email, mdp: sha256(f.mdp.value), unlocked:false, date: new Date().toISOString()};
+  const u = {id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), nom: f.nom.value.trim(), email, mdp: sha256(f.mdp.value), unlocked:false, mat:{app:f.eqApp.value, net:f.eqNet.value, op:f.eqOp.value, el:f.eqEl.value}, date: new Date().toISOString()};
   users.push(u); saveUsers(users);
   localStorage.setItem(K.session, u.id);
   msg = null; render();
@@ -865,10 +879,10 @@ function admin(){
     ${adminMsg ? `<div class="msg info">${esc(adminMsg)}</div>` : ""}
   </div>
   ${users.length ? `<div style="overflow-x:auto"><table>
-    <tr><th>Nom</th><th>Email</th><th>Statut</th><th>Inscrit le</th><th>Action</th></tr>
+    <tr><th>Nom</th><th>Email</th><th>Statut</th><th>Inscrit le</th><th>Matériel</th><th>Action</th></tr>
     ${users.map(u => `<tr><td>${esc(u.nom)}</td><td>${esc(u.email)}</td>
       <td><span class="badge ${u.unlocked?'ok':'wait'}">${u.unlocked?'Débloqué':'En attente'}</span></td>
-      <td>${new Date(u.date).toLocaleDateString("fr-FR")}</td>
+      <td>${new Date(u.date).toLocaleDateString("fr-FR")}</td><td>${u.mat?esc(u.mat.app+" · "+u.mat.net+" · "+u.mat.op+" · "+u.mat.el):"—"}</td>
       <td><button class="btn small ${u.unlocked?'danger':''}" data-act="user-toggle" data-id="${u.id}">${u.unlocked?'Bloquer':'Débloquer'}</button></td></tr>`).join("")}
   </table></div>` : `<div class="box"><p>Aucun compte pour le moment.</p></div>`}
   <div class="actions" style="margin-top:18px"><button class="btn sec small" data-act="admin-quit">Quitter l'admin</button></div>`;
@@ -971,6 +985,249 @@ document.addEventListener("change", e => {
 
 /* ==================== INITIALISATION ==================== */
 document.getElementById("year").textContent = new Date().getFullYear();
+render();
+</script>
+<script>
+/* ===== I18N ===== */
+let LANG=localStorage.getItem("mf_lang")||"fr";
+const LANGS={fr:"Français",mg:"Malagasy",en:"English",es:"Español"};
+const T={
+fr:{home:"Accueil",train:"Explications et formation",demo:"Mode démo",sites:"Sites utiles",prof:"Profil de l'étudiant",admin:"Administration",lang:"Langue",dark:"Mode sombre",light:"Mode clair",h1:"Apprenez à vendre sur Fiverr, de A à Z",sub:"Une formation simple et pratique pour les débutants à Madagascar.",cta:"Commencer",a1:"Simple et détaillée",a1d:"Des étapes claires, sans jargon.",a2:"Mode démo",a2d:"Entraînez-vous avec de faux clients.",a3:"Assistant en ligne",a3d:"Des réponses à tout moment.",locked:"Contenu détaillé après validation de votre paiement.",login:"Se connecter",reg:"Créer mon compte",nom:"Nom complet",email:"Email",pwd:"Mot de passe",out:"Se déconnecter",hello:"Bonjour",wait:"⏳ En attente de validation",pay:"Envoyez {p} par MVola au {n} ({m}), puis la référence à l'administrateur : il débloquera votre accès.",photo:"Changer la photo",rm:"Supprimer la photo",save:"Enregistrer",cur:"Mot de passe actuel",nw:"Nouveau mot de passe (6 min.)",nw2:"Confirmer",chpwd:"Changer le mot de passe",saved:"Modifications enregistrées.",wrong:"Mot de passe actuel incorrect.",exists:"Cet email est déjà utilisé.",short:"Mot de passe trop court ou différent.",del:"Supprimer mon compte",delq:"Supprimer définitivement ce compte ?",prog:"Progression",mods:"modules terminés",status:"Statut",ok:"Débloqué",nok:"En attente",need:"Connectez-vous pour accéder à cette page.",done:"Module terminé",lex:"Lexique",visit:"Visiter →",info:"Informations",sec:"Sécurité",demoT:"Mode démo pratique",demoD:"Entraînez-vous avec des clients fictifs : aucun vrai argent.",ap:"Apprendre"},
+mg:{home:"Fandraisana",train:"Fanazavana sy fanofanana",demo:"Fomba fanandramana",sites:"Tranokala ilaina",prof:"Mombamomba ny mpianatra",admin:"Fitantanana",lang:"Fiteny",dark:"Maizina",light:"Mazava",h1:"Mianara mivarotra amin'ny Fiverr, A ka Z",sub:"Fanofanana tsotra sy azo ampiharina ho an'ny vao manomboka eto Madagasikara.",cta:"Atombohy",a1:"Tsotra sy feno",a1d:"Dingana mazava, tsy misy teny sarotra.",a2:"Fomba fanandramana",a2d:"Mampiofàna miaraka amin'ny mpanjifa sandoka.",a3:"Mpanampy an-tserasera",a3d:"Valiny amin'ny fotoana rehetra.",locked:"Hita ny votoaty feno rehefa voamarina ny fandoavanao.",login:"Hiditra",reg:"Hamorona kaonty",nom:"Anarana feno",email:"Mailaka",pwd:"Teny miafina",out:"Hivoaka",hello:"Salama",wait:"⏳ Miandry fanamarinana",pay:"Alefaso amin'ny MVola ny {p} ho any amin'ny {n} ({m}), avy eo ny laharana fifanakalozana ho an'ny mpitantana: izy no manokatra ny fidiranao.",photo:"Hanova sary",rm:"Hanala ny sary",save:"Tehirizo",cur:"Teny miafina ankehitriny",nw:"Teny miafina vaovao (6 farafahakeliny)",nw2:"Hamafiso",chpwd:"Hanova teny miafina",saved:"Voatahiry ny fanovana.",wrong:"Diso ny teny miafina ankehitriny.",exists:"Efa ampiasaina io mailaka io.",short:"Fohy loatra na tsy mitovy ny teny miafina.",del:"Hamafa ny kaontiko",delq:"Fafana tanteraka ve ity kaonty ity?",prog:"Fandrosoana",mods:"modely vita",status:"Toetra",ok:"Misokatra",nok:"Miandry",need:"Midira mba hahita ity pejy ity.",done:"Vita ny modely",lex:"Voambolana",visit:"Hitsidika →",info:"Fampahalalana",sec:"Fiarovana",demoT:"Fanandramana azo ampiharina",demoD:"Mampiofàna miaraka amin'ny mpanjifa sandoka: tsy misy vola tena izy.",ap:"Hianatra"},
+en:{home:"Home",train:"Lessons & training",demo:"Demo mode",sites:"Useful sites",prof:"Student profile",admin:"Administration",lang:"Language",dark:"Dark mode",light:"Light mode",h1:"Learn to sell on Fiverr, from A to Z",sub:"A simple, practical course for beginners in Madagascar.",cta:"Get started",a1:"Simple and detailed",a1d:"Clear steps, no jargon.",a2:"Demo mode",a2d:"Practise with fake clients.",a3:"Online assistant",a3d:"Answers at any time.",locked:"Full content unlocks once your payment is verified.",login:"Log in",reg:"Create account",nom:"Full name",email:"Email",pwd:"Password",out:"Log out",hello:"Hello",wait:"⏳ Awaiting validation",pay:"Send {p} by MVola to {n} ({m}), then send the reference to the administrator: they will unlock your access.",photo:"Change photo",rm:"Remove photo",save:"Save",cur:"Current password",nw:"New password (min. 6)",nw2:"Confirm",chpwd:"Change password",saved:"Changes saved.",wrong:"Current password is incorrect.",exists:"This email is already used.",short:"Password too short or not matching.",del:"Delete my account",delq:"Permanently delete this account?",prog:"Progress",mods:"modules completed",status:"Status",ok:"Unlocked",nok:"Pending",need:"Log in to access this page.",done:"Module completed",lex:"Glossary",visit:"Visit →",info:"Information",sec:"Security",demoT:"Practical demo mode",demoD:"Practise with fictional clients: no real money.",ap:"Learn"},
+es:{home:"Inicio",train:"Explicaciones y formación",demo:"Modo demo",sites:"Sitios útiles",prof:"Perfil del estudiante",admin:"Administración",lang:"Idioma",dark:"Modo oscuro",light:"Modo claro",h1:"Aprende a vender en Fiverr, de la A a la Z",sub:"Un curso sencillo y práctico para principiantes en Madagascar.",cta:"Empezar",a1:"Simple y detallado",a1d:"Pasos claros, sin jerga.",a2:"Modo demo",a2d:"Practica con clientes ficticios.",a3:"Asistente en línea",a3d:"Respuestas a cualquier hora.",locked:"El contenido completo se activa al verificar tu pago.",login:"Iniciar sesión",reg:"Crear cuenta",nom:"Nombre completo",email:"Correo",pwd:"Contraseña",out:"Cerrar sesión",hello:"Hola",wait:"⏳ Pendiente de validación",pay:"Envía {p} por MVola al {n} ({m}) y luego la referencia al administrador: desbloqueará tu acceso.",photo:"Cambiar foto",rm:"Quitar foto",save:"Guardar",cur:"Contraseña actual",nw:"Nueva contraseña (mín. 6)",nw2:"Confirmar",chpwd:"Cambiar contraseña",saved:"Cambios guardados.",wrong:"Contraseña actual incorrecta.",exists:"Este correo ya está en uso.",short:"Contraseña corta o no coincide.",del:"Eliminar mi cuenta",delq:"¿Eliminar esta cuenta definitivamente?",prog:"Progreso",mods:"módulos completados",status:"Estado",ok:"Desbloqueado",nok:"Pendiente",need:"Inicia sesión para ver esta página.",done:"Módulo completado",lex:"Glosario",visit:"Visitar →",info:"Información",sec:"Seguridad",demoT:"Modo demo práctico",demoD:"Practica con clientes ficticios: sin dinero real.",ap:"Aprender"}};
+const t=k=>(T[LANG]&&T[LANG][k])||T.en[k]||T.fr[k]||k;
+const MT={
+mg:["1 · Fahatakarana ny asa an-tserasera sy Fiverr","2 · Fisoratana anarana amin'ny Fiverr","3 · Fanamboarana mombamomba azy mampiaiky ny fatokisana","4 · Fisafidianana serivisy sy fandalinana tsena","5 · Famoronana ny gig voalohany","6 · Fanamafisana vidiny tsy mampahory anao","7 · Sary, video ary fampisehoana gig","8 · Fitadiavana mpanjifa voalohany","9 · Fitantanana baiko manomboka amin'ny fiandohana ka hatramin'ny farany","10 · Fandoavana sy fakana vola","11 · Fampandrosoana ny asa (A ka Z)","12 · Hadisoana mahazatra sy fisorohana"],
+en:["1 · Understanding online work and Fiverr","2 · Signing up on Fiverr, step by step","3 · Setting up a profile that builds trust","4 · Choosing your service and studying the market","5 · Creating your first gig, step by step","6 · Setting prices without underpaying yourself","7 · Images, video and gig presentation","8 · Finding your first clients","9 · Managing an order from start to finish","10 · Getting paid and withdrawing your money","11 · Growing your business (A to Z)","12 · Common mistakes and how to avoid them"],
+es:["1 · Entender el trabajo en línea y Fiverr","2 · Registro en Fiverr, paso a paso","3 · Configurar un perfil que inspire confianza","4 · Elegir tu servicio y estudiar el mercado","5 · Crear tu primer gig, paso a paso","6 · Fijar precios sin pagarte de menos","7 · Imágenes, vídeo y presentación del gig","8 · Encontrar tus primeros clientes","9 · Gestionar un pedido de principio a fin","10 · Cobrar y retirar tu dinero","11 · Hacer crecer tu actividad (de la A a la Z)","12 · Errores frecuentes y cómo evitarlos"]};
+const mt=i=>(MT[LANG]&&MT[LANG][i])||MODULES[i].titre;
+
+/* ===== THÈME / MENU ===== */
+document.documentElement.dataset.theme=localStorage.getItem("mf_theme")||"light";
+document.documentElement.lang=LANG;
+let menuOpen=false;
+function drawer(){
+  const u=currentUser(),dk=document.documentElement.dataset.theme==="dark";
+  const it=(v,ic,l)=>`<button class="it ${view===v?'on':''}" data-act="go" data-view="${v}">${ic} ${l}</button>`;
+  document.getElementById("drawer").innerHTML=`
+   <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">${avatar(u,"")}<div><strong>${u?esc(u.nom):"🚀 Fiverr MG"}</strong><br><small style="color:var(--gray)">${u?esc(u.email):""}</small></div></div><hr class="sep">
+   ${it("accueil","🏠",t("home"))}${it("formation","📚",t("train"))}${it("demo","🎮",t("demo"))}${it("sites","🛠️",t("sites"))}${it("materiel","💻",t("mat"))}${it("profil","👤",t("prof"))}${it("admin","🔐",t("admin"))}
+   <hr class="sep"><label>🌐 ${t("lang")}</label><select id="lang">${Object.entries(LANGS).map(([k,v])=>`<option value="${k}" ${k===LANG?"selected":""}>${v}</option>`).join("")}</select>
+   <button class="it" data-act="theme" style="margin-top:10px">${dk?"☀️ "+t("light"):"🌙 "+t("dark")}</button>`;
+  document.getElementById("drawer").classList.toggle("open",menuOpen);
+  document.getElementById("ov").classList.toggle("hidden",!menuOpen);
+}
+function avatar(u,big){const c="av "+(big?"big":"");return u&&u.photo?`<img class="${c}" src="${u.photo}" alt="">`:`<div class="${c}">${u?esc(u.nom.trim().charAt(0).toUpperCase()):"🚀"}</div>`}
+
+/* ===== NAVIGATION ===== */
+function go(v){view=v;msg=null;menuOpen=false;render();window.scrollTo({top:0,behavior:"smooth"})}
+function render(){
+  const V={accueil,formation,demo:demoView,sites,profil:profilView,admin,espace:profilView,materiel:materielView};
+  document.getElementById("app").innerHTML=V[view]();drawer();
+}
+const lock=()=>`<div class="box"><p>${t("need")}</p><button class="btn full" data-act="go" data-view="profil">${t("login")}</button></div>`;
+function accueil(){return `<section class="hero"><h1>${t("h1")}</h1><p>${t("sub")}</p><div class="price" style="color:#fff;margin-top:18px">${CONFIG.prix}</div><button class="btn" data-act="go" data-view="formation">${t("cta")}</button></section>
+ <div class="grid" style="margin-top:24px"><div class="card"><div class="ico">📚</div><h3>${t("a1")}</h3><p>${t("a1d")}</p></div><div class="card"><div class="ico">🎮</div><h3>${t("a2")}</h3><p>${t("a2d")}</p></div><div class="card"><div class="ico">🤖</div><h3>${t("a3")}</h3><p>${t("a3d")}</p></div></div>`}
+function formation(){
+  const u=currentUser(),ok=u&&u.unlocked,done=get("mf_progres",[]);
+  const pct=Math.round(done.length/MODULES.length*100);
+  return `<h2>${t("train")}</h2>`+(ok?`<div class="box" style="max-width:none;margin-bottom:18px"><strong>${t("prog")} : ${done.length}/${MODULES.length} ${t("mods")}</strong><div style="background:#e2e8f0;border-radius:999px;height:10px;margin-top:8px;overflow:hidden"><div style="width:${pct}%;height:10px;background:var(--p)"></div></div></div>`:`<p style="margin-bottom:16px;color:var(--gray)">${t("locked")}</p>`)+
+  MODULES.map((m,i)=>ok?`<details class="module"><summary>${done.includes(i)?"✅ ":""}${esc(mt(i))}</summary><div class="body">${m.contenu}<button class="btn small" data-act="demo-mission" data-id="${i}" style="margin-top:14px">🎮 Mission pratique (mode démo)</button><label style="display:flex;gap:8px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" data-done="${i}" ${done.includes(i)?"checked":""} style="width:auto"> ${t("done")}</label></div></details>`:`<div class="module"><summary>${esc(mt(i))}</summary></div>`).join("")+
+  (ok?`<h2>${t("lex")}</h2><div class="grid">${LEXIQUE.map(l=>`<div class="card"><h3>${esc(l[0])}</h3><p>${esc(l[1])}</p></div>`).join("")}</div>`:`<div style="text-align:center;margin-top:18px"><button class="btn" data-act="go" data-view="profil">${t("login")}</button></div>`)}
+function demoView(){const u=currentUser();if(!u||!u.unlocked)return u?header(u)+payerEtCode():lock();const dn=get("mf_materiel",[]),mq=MAT.filter(m=>m[4]),mr=mq.filter(m=>dn.includes(m[0])).length;return `<h2>${t("demoT")}</h2><p style="color:var(--gray);margin-bottom:14px">${t("demoD")}</p>`+(mr<mq.length?`<div class="msg err" style="margin-bottom:14px">⚠️ Matériel obligatoire prêt : ${mr}/${mq.length}. Comme un vrai vendeur, vérifiez votre équipement avant de travailler. <button class="link" data-act="go" data-view="materiel">Voir ma liste</button></div>`:"")+demoRender()}
+function sites(){return `<h2>${t("sites")}</h2><div class="grid">${SITES.map(s=>`<div class="card"><h3>${esc(s.nom)}</h3><p>${esc(s.usage)}</p><a href="${esc(s.url)}" target="_blank" rel="noopener">${t("visit")}</a></div>`).join("")}</div>`}
+function payerEtCode(){return `<div class="box"><span class="badge wait">${t("wait")}</span><div class="mvola" style="margin-top:14px">${t("pay").replace("{p}",`<strong>${CONFIG.prix}</strong>`).replace("{n}",`<strong>${CONFIG.mvolaNumero}</strong>`).replace("{m}",esc(CONFIG.mvolaNom))}</div></div>`}
+
+/* ===== PROFIL ===== */
+function profilView(){
+  const u=currentUser();if(!u)return authForms();
+  const n=get("mf_progres",[]).length,m=msg?`<div class="msg ${msg.type}">${esc(msg.text)}</div>`:"";
+  return `<div class="box" style="text-align:center">${avatar(u,1)}<h3 style="margin-top:10px">${esc(u.nom)}</h3><span class="badge ${u.unlocked?'ok':'no'}">${u.unlocked?t("ok"):t("nok")}</span>
+   <div class="actions" style="justify-content:center;margin-top:12px"><label class="btn small" style="margin:0;cursor:pointer;display:inline-block">📷 ${t("photo")}<input id="photo" type="file" accept="image/*" hidden></label><button class="btn sec small" data-act="photo-del">${t("rm")}</button></div>
+   <p style="margin-top:12px;color:var(--gray)">${t("prog")} : ${n}/${MODULES.length} ${t("mods")} · ${new Date(u.date).toLocaleDateString(LANG)}</p></div>
+  <div class="box" style="margin-top:16px"><h3>${t("info")}</h3><form id="f-prof"><label>${t("nom")}</label><input name="nom" value="${esc(u.nom)}"><label>${t("email")}</label><input name="email" type="email" value="${esc(u.email)}"><button class="btn full" type="button" data-act="p-save">${t("save")}</button></form></div>
+  <div class="box" style="margin-top:16px"><h3>${t("sec")}</h3><form id="f-pwd"><label>${t("cur")}</label><input name="cur" type="password"><label>${t("nw")}</label><input name="n1" type="password"><label>${t("nw2")}</label><input name="n2" type="password"><button class="btn full" type="button" data-act="p-pwd">${t("chpwd")}</button></form>${m}</div>
+  <div class="actions" style="justify-content:center;margin-top:18px"><button class="btn sec small" data-act="logout">${t("out")}</button><button class="btn danger small" data-act="p-del">${t("del")}</button></div>`}
+function upd(fn){const us=getUsers(),u=us.find(x=>x.id===localStorage.getItem(K.session));if(!u)return;fn(u);saveUsers(us);render()}
+function setPhoto(file){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=200;const m=Math.min(im.width,im.height);c.getContext("2d").drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,200,200);upd(u=>u.photo=c.toDataURL("image/jpeg",.8))};im.src=r.result};r.readAsDataURL(file)}
+function profAct(a){
+  const u=currentUser();if(!u)return;
+  if(a==="photo-del"){upd(x=>delete x.photo)}
+  if(a==="p-save"){const f=document.getElementById("f-prof"),n=f.nom.value.trim(),e=f.email.value.trim().toLowerCase();if(!n||!e)return;
+    if(getUsers().some(x=>x.email===e&&x.id!==u.id)){msg={type:"err",text:t("exists")};return render()}
+    msg={type:"ok",text:t("saved")};upd(x=>{x.nom=n;x.email=e})}
+  if(a==="p-pwd"){const f=document.getElementById("f-pwd");
+    if(sha256(f.cur.value)!==u.mdp){msg={type:"err",text:t("wrong")};return render()}
+    if(f.n1.value.length<6||f.n1.value!==f.n2.value){msg={type:"err",text:t("short")};return render()}
+    msg={type:"ok",text:t("saved")};upd(x=>x.mdp=sha256(f.n1.value))}
+  if(a==="p-del"&&confirm(t("delq"))){saveUsers(getUsers().filter(x=>x.id!==u.id));localStorage.removeItem(K.session);go("accueil")}
+}
+
+/* ===== ÉVÉNEMENTS ===== */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
+  if(a==="menu"){menuOpen=!menuOpen;drawer()}
+  if(a==="theme"){const d=document.documentElement,n=d.dataset.theme==="dark"?"light":"dark";d.dataset.theme=n;localStorage.setItem("mf_theme",n);drawer()}
+  if(["photo-del","p-save","p-pwd","p-del"].includes(a))profAct(a);
+});
+document.addEventListener("change",e=>{
+  if(e.target.id==="lang"){LANG=e.target.value;localStorage.setItem("mf_lang",LANG);document.documentElement.lang=LANG;render()}
+  if(e.target.id==="photo"&&e.target.files[0])setPhoto(e.target.files[0]);
+});
+
+/* ===== MODE DÉMO STYLE FIVERR ===== */
+let DEMO_PROOF=null;
+const FS={nouvelle:["New order","#e0f2fe","#075985"],en_cours:["In progress","#fef9c3","#854d0e"],revision:["Revision","#ffedd5","#9a3412"],livree:["Delivered","#ede9fe","#5b21b6"],terminee:["Completed","#dcfce7","#166534"]};
+const fbadge=s=>`<span class="badge" style="background:${FS[s][1]};color:${FS[s][2]}">${FS[s][0]}</span>`;
+const net=c=>c.montant*0.8, usd=n=>n.toFixed(2)+" $";
+const REV=["Merci ! Pouvez-vous ajuster les couleurs et me renvoyer la version ?","Presque parfait : pouvez-vous corriger un détail dans le texte ?"];
+function demoStats(d){const dn=d.commandes.filter(c=>c.statut==="terminee"),tot=dn.reduce((t,c)=>t+net(c),0),clr=dn.filter(c=>c.cleared).reduce((t,c)=>t+net(c),0);return{tot,pend:tot-clr,avail:clr-d.retire}}
+function demoRender(){
+  const d=demoGet(),s=demoStats(d),tab=d.tab||"active",c=d.open&&d.commandes.find(x=>x.id===d.open);
+  return `<div class="box" style="max-width:none;margin-bottom:16px"><span class="badge no">MODE DÉMO — fictif</span>
+  <p style="color:var(--gray);font-size:.9rem;margin:8px 0 12px">Cette démo reprend le fonctionnement de Fiverr : <b>Orders</b> (commandes), <b>Deliver Now</b> (livrer), <b>Request revision</b> (révision), <b>Earnings</b> (revenus), <b>Pending clearance</b> (en attente de traitement) et <b>Withdraw</b> (retrait). Aucun vrai client, aucun vrai argent. Commission de démonstration : 20 %.</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+   <div class="card"><small>Net income</small><h3>${usd(s.tot)}</h3></div><div class="card"><small>Pending clearance</small><h3>${usd(s.pend)}</h3></div>
+   <div class="card"><small>Available for withdrawal</small><h3>${usd(s.avail)}</h3></div><div class="card"><small>Withdrawn</small><h3>${usd(d.retire)}</h3></div></div>
+  <div class="actions" style="margin-top:12px"><button class="btn small" data-act="demo-nouveau">+ Nouvelle commande</button><button class="btn sec small" data-act="demo-clear">⏩ Simuler la fin de la période de traitement</button><button class="btn small" data-act="demo-retrait">Withdraw</button><button class="btn sec small" data-act="demo-reset">Réinitialiser</button></div>
+  ${d.msg?`<div class="msg info">${esc(d.msg)}</div>`:""}</div>`+demoSections(d,c,tab)}
+function demoList(d,tab){
+  const G={active:["nouvelle","en_cours","revision"],delivered:["livree"],completed:["terminee"]},L={active:"Active",delivered:"Delivered",completed:"Completed"};
+  const rows=d.commandes.filter(c=>G[tab].includes(c.statut));
+  return `<div class="tabs">${Object.keys(G).map(k=>`<button class="${k===tab?'active':''}" data-act="demo-tab" data-id="${k}">${L[k]} (${d.commandes.filter(c=>G[k].includes(c.statut)).length})</button>`).join("")}</div>`+
+  (rows.length?`<div style="overflow-x:auto"><table><tr><th>Buyer</th><th>Gig</th><th>Due on</th><th>Total</th><th>Status</th><th></th></tr>${rows.map(c=>`<tr><td><b>${esc(c.client)}</b></td><td>${esc(c.service)}</td><td>${esc(c.due||"3 jours")}</td><td>${usd(c.montant)}</td><td>${fbadge(c.statut)}</td><td><button class="btn small" data-act="demo-open" data-id="${c.id}">Ouvrir</button></td></tr>`).join("")}</table></div>`:`<div class="box"><p>Aucune commande dans cet onglet.</p></div>`)}
+const QC=["J'ai respecté toute la consigne du client","J'ai relu et corrigé les fautes","Le fichier est propre et lisible","Je livre dans le délai annoncé"];
+function demoOrder(c){
+  const st=["Order placed","Requirements submitted","Order started","Delivered","Completed"],at={nouvelle:1,en_cours:2,revision:2,livree:3,terminee:4}[c.statut];
+  const tl=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">${st.map((x,i)=>`<span class="badge" style="${i<=at?'background:var(--p);color:#fff':''}">${i<=at?'✓ ':''}${x}</span>`).join("")}</div>`;
+  const dv=(c.statut==="en_cours"||c.statut==="revision")?`<div class="card" style="margin-top:12px"><h3>Deliver Now</h3><p style="font-size:.9rem;color:var(--gray)">Décrivez votre livraison et joignez une <b>capture d'écran de votre travail</b> comme preuve (obligatoire).</p>
+   <textarea id="dd-txt-${c.id}" style="font-family:inherit;font-size:.95rem" placeholder="Bonjour, votre travail est prêt. Vous trouverez ci-joint..."></textarea>
+   <label style="margin-top:10px">📎 Capture d'écran (image)</label><input id="proof" type="file" accept="image/*"><div id="pv" style="margin-top:8px"></div>
+   <p style="margin-top:12px;font-weight:600">✅ Contrôle qualité avant livraison</p>${QC.map((q,i)=>`<label style="display:flex;gap:8px;font-weight:400;margin:6px 0"><input type="checkbox" data-qc="${c.id}" value="${i}" style="width:auto">${q}</label>`).join("")}
+   <button class="btn small" style="margin-top:10px" data-act="demo-livrer" data-id="${c.id}">Deliver Now</button></div>`:"";
+  const pr=c.proof?`<div class="card" style="margin-top:12px"><h3>Livraison</h3><p>${esc(c.livTxt||"")}</p><img src="${c.proof}" alt="Preuve de travail" style="max-width:100%;border-radius:10px;border:1px solid #cbd5e1"></div>`:"";
+  const act=c.statut==="nouvelle"?`<button class="btn small" data-act="demo-start" data-id="${c.id}">Start order</button>`:c.statut==="livree"?`<button class="btn small" data-act="demo-valider" data-id="${c.id}">Simuler : le client accepte</button><button class="btn sec small" data-act="demo-revision" data-id="${c.id}">Simuler : demande de révision</button>`:c.statut==="terminee"?`<span class="badge ok">${"⭐".repeat(c.note||5)} Avis reçu — en attente de traitement ou disponible dans Earnings</span>`:"";
+  return `<button class="btn sec small" data-act="demo-back">← Orders</button>
+  <div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><h3>Order #FO${esc(String(c.id).slice(-5).toUpperCase())} — ${esc(c.client)}</h3>${fbadge(c.statut)}</div>${tl}
+   <p><b>Gig :</b> ${esc(c.service)}<br><b>Total :</b> ${usd(c.montant)} · <b>Vous recevez :</b> ${usd(net(c))} · <b>Délai :</b> ${esc(c.due||"3 jours")}</p>
+   ${c.brief?`<p style="background:var(--light);padding:10px;border-radius:10px;margin-top:8px"><b>🛠️ Tâche à réaliser :</b> ${esc(c.brief)}</p>`:""}<div class="actions" style="margin:10px 0">${act}</div></div>${dv}${pr}
+  <div class="card" style="margin-top:12px"><h3>Inbox</h3><div style="background:var(--light);border-radius:10px;padding:10px;max-height:220px;overflow-y:auto">${c.messages.map(m=>`<div style="margin:6px 0"><b>${m.de==='client'?esc(c.client):'Vous'} :</b> ${esc(m.txt)}</div>`).join("")}</div>
+   <div class="actions" style="margin-top:8px"><input id="msg-${c.id}" placeholder="Écrire un message..." style="flex:1;min-width:180px"><button class="btn small" data-act="demo-msg" data-id="${c.id}">Envoyer</button></div></div>`}
+function demoAction(a,id){
+  const d=demoGet();d.msg=null;
+  const done=()=>{demoSave(d);render()};
+  if(demoAction2(a,id,d,done))return;if(a==="demo-nouveau"){const [client,service,montant]=DEMO_CLIENTS[Math.floor(Math.random()*DEMO_CLIENTS.length)];d.commandes.unshift({id:"c"+Date.now(),client,service,montant,statut:"nouvelle",due:"3 jours",messages:[{de:"client",txt:"Bonjour, je souhaite ce service. Voici mes exigences : couleurs bleu/blanc, style simple."}]});d.tab="active";d.msg="Nouvelle commande reçue.";return done()}
+  if(a==="demo-tab"){d.tab=id;d.open=null;return done()}
+  if(a==="demo-back"){d.open=null;return done()}
+  if(a==="demo-open"){d.open=id;DEMO_PROOF=null;return done()}
+  if(a==="demo-clear"){let n=0;d.commandes.forEach(c=>{if(c.statut==="terminee"&&!c.cleared){c.cleared=true;n++}});d.msg=n?"Période de traitement terminée : les gains sont disponibles (sur Fiverr, la durée dépend de votre compte : vérifiez l'aide Fiverr).":"Aucun gain en attente de traitement.";return done()}
+  if(a==="demo-retrait"){const s=demoStats(d);if(s.avail<=0)d.msg="Rien à retirer : terminez une commande puis simulez la fin de la période de traitement.";else{d.retire+=s.avail;d.msg=`Retrait démo de ${usd(s.avail)} effectué (simulation).`}return done()}
+  if(a==="demo-reset"){localStorage.removeItem("mf_demo");DEMO_PROOF=null;return render()}
+  const c=d.commandes.find(x=>x.id===id);if(!c)return;
+  const inp=document.getElementById("msg-"+id),tx=inp?inp.value.trim():"";
+  if(a==="demo-start"){c.statut="en_cours";c.messages.push({de:"moi",txt:"Bonjour, merci pour votre confiance ! Je commence aujourd'hui."});d.msg="Commande démarrée."}
+  if(a==="demo-livrer"){const t2=document.getElementById("dd-txt-"+id),txt=t2?t2.value.trim():"";
+    if(!txt){d.msg="Écrivez un message de livraison (modèle dans le Module 9).";return done()}
+    if(!DEMO_PROOF){d.msg="Joignez une capture d'écran de votre travail comme preuve avant de livrer.";return done()}
+    c.qc=document.querySelectorAll('[data-qc="'+id+'"]:checked').length;c.proof=DEMO_PROOF;c.livTxt=txt;DEMO_PROOF=null;c.messages.push({de:"moi",txt:"[Livraison] "+txt});c.statut="livree";d.msg="Travail livré avec preuve. Le client doit maintenant l'accepter."}
+  if(a==="demo-revision"){c.statut="revision";c.messages.push({de:"client",txt:REV[Math.floor(Math.random()*REV.length)]});d.msg="Le client demande une révision : corrigez, joignez une nouvelle capture et livrez à nouveau."}
+  if(a==="demo-valider"){const q=c.qc==null?4:c.qc;c.statut="terminee";c.note=q>=4?5:q===3?4:3;c.messages.push({de:"client",txt:q>=4?"Parfait, merci beaucoup !":q===3?"Bon travail, quelques détails à améliorer la prochaine fois.":"Travail correct mais je vois des erreurs. Relisez avant de livrer."});d.msg=`Commande terminée : ${usd(net(c))} en attente de traitement (Pending clearance). Avis du client : ${"⭐".repeat(c.note)}`}
+  if(a==="demo-msg"){if(!tx)return;c.messages.push({de:"moi",txt:tx});demoSave(d);render();setTimeout(()=>{const d2=demoGet(),c2=d2.commandes.find(x=>x.id===id);if(c2){c2.messages.push({de:"client",txt:DEMO_REPONSES[Math.floor(Math.random()*DEMO_REPONSES.length)]});demoSave(d2);render()}},900);return}
+  done()}
+document.addEventListener("change",e=>{
+  if(e.target.id!=="proof"||!e.target.files[0])return;
+  const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,700/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);DEMO_PROOF=c.toDataURL("image/jpeg",.6);const pv=document.getElementById("pv");if(pv)pv.innerHTML=`<img src="${DEMO_PROOF}" style="max-width:220px;border-radius:8px;border:1px solid #cbd5e1">`};im.src=r.result};r.readAsDataURL(e.target.files[0])});
+
+T.fr.mat="Matériel nécessaire";T.mg.mat="Fitaovana ilaina";T.en.mat="Equipment needed";T.es.mat="Equipo necesario";
+/* ===== MATÉRIEL ===== */
+const EQ=[["app","📱 Appareil principal",["Téléphone","Ordinateur","Téléphone et ordinateur"]],["net","🌐 Connexion internet",["Wi-Fi","Données mobiles","Wi-Fi et données mobiles"]],["op","📞 Opérateur",["Yas/Telma","Orange","Airtel","Autre"]],["el","🔋 Électricité",["Stable","Coupures fréquentes"]]];
+function eqBox(){
+  const u=currentUser();if(!u)return "";const m=u.mat||{},tips=[];
+  if(m.app==="Téléphone")tips.push("📱 Avec un téléphone seul, les missions Canva et Google Sheets sont possibles mais plus lentes : utilisez les applications Canva et Sheets, ou un ordinateur d'un cybercafé pour les gros travaux.");
+  if(m.net==="Données mobiles")tips.push("🌐 Avec les données mobiles, surveillez votre forfait : les envois d'images et de vidéos consomment beaucoup.");
+  if(m.el==="Coupures fréquentes")tips.push("🔋 Avec des coupures, chargez vos appareils avant chaque livraison et prévoyez une batterie externe.");
+  return `<div class="box" style="max-width:none;margin-bottom:16px"><h3>Mon équipement</h3>${EQ.map(e=>`<label>${e[1]}</label><select class="eq" data-eq="${e[0]}">${e[2].map(o=>`<option ${m[e[0]]===o?"selected":""}>${o}</option>`).join("")}</select>`).join("")}${tips.map(x=>`<div class="msg info">${x}</div>`).join("")}</div>`}
+document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.eq){const k=e.target.dataset.eq,v=e.target.value;upd(u=>{u.mat=u.mat||{};u.mat[k]=v})}});
+const MAT=[
+["tel","📱","Téléphone ou ordinateur","Un téléphone récent suffit pour les messages, le suivi des commandes et l'inscription. Pour créer des logos, des vidéos ou des documents, un ordinateur est bien plus confortable (au moins 4 Go de mémoire, 8 Go recommandé).",1],
+["net","🌐","Connexion internet stable","Wi-Fi ou données mobiles de votre opérateur (Yas/Telma, Orange, Airtel). Prévoyez au moins 5 Mbit/s pour écrire, envoyer des fichiers et faire l'inscription, et davantage pour la vidéo. Testez votre vitesse sur un site de test gratuit.",1],
+["bak","🔁","Connexion de secours","Gardez un second moyen : si le Wi-Fi tombe, partagez la connexion de votre téléphone (point d'accès). Un client attend une réponse rapide et une livraison à l'heure.",0],
+["pow","🔋","Électricité et batterie","Chargez vos appareils avant une livraison. Une batterie externe (power bank) vous évite de perdre une journée en cas de coupure.",0],
+["mail","📧","Adresse email active","Indispensable pour l'inscription et la récupération du compte. Créez-en une dédiée au travail, avec un mot de passe unique que vous seul connaissez.",1],
+["sim","📞","Numéro de téléphone","Fiverr envoie un code par SMS pour vérifier le compte. Gardez la SIM accessible, ne partagez jamais ce code.",1],
+["id","🪪","Pièce d'identité","Une pièce valide (CNI ou passeport) peut être demandée pour la vérification. Préparez une photo nette, en bonne lumière, sans reflet.",1],
+["mvola","💳","Compte MVola","Pour payer l'inscription à la formation (voir la page de paiement).",1],
+["cam","📸","Appareil photo et bonne lumière","Pour la photo de profil, les captures d'écran de preuve de travail et d'éventuelles vidéos de présentation.",0],
+["aud","🎧","Écouteurs ou micro","Utile pour les appels avec les clients, les vidéos et le contrôle du son.",0],
+["app","🧰","Navigateur à jour et outils gratuits","Chrome ou Firefox à jour, un compte Google (Drive, Sheets) et Canva gratuit.",1],
+["mem","💾","Espace de stockage libre","Gardez au moins 2 Go libres pour vos fichiers, captures d'écran et livraisons.",0],
+["cal","🪑","Un endroit calme","Un coin tranquille pour travailler sans interruption, à des heures régulières.",0]];
+function materielView(){
+  const dn=get("mf_materiel",[]),req=MAT.filter(m=>m[4]),rd=req.filter(m=>dn.includes(m[0])).length;
+  return `<h2>${t("mat")}</h2>${eqBox()}<div class="box" style="max-width:none;margin-bottom:16px"><p>Cochez ce que vous avez déjà. Les éléments marqués <b>Obligatoire</b> sont nécessaires avant l'inscription sur Fiverr.</p><p style="margin-top:8px"><b>${rd}/${req.length}</b> éléments obligatoires prêts</p><div style="background:#e2e8f0;border-radius:999px;height:10px;margin-top:6px;overflow:hidden"><div style="width:${Math.round(rd/req.length*100)}%;height:10px;background:var(--p)"></div></div></div>`+
+  MAT.map(m=>`<label class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;cursor:pointer;font-weight:400"><input type="checkbox" data-mat="${m[0]}" ${dn.includes(m[0])?"checked":""} style="width:auto;margin-top:6px"><span><b>${m[1]} ${m[2]}</b> ${m[4]?'<span class="badge ok">Obligatoire</span>':'<span class="badge">Recommandé</span>'}<br>${m[3]}</span></label>`).join("")}
+document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.mat){let l=get("mf_materiel",[]),k=e.target.dataset.mat;l=e.target.checked?[...new Set([...l,k])]:l.filter(x=>x!==k);set("mf_materiel",l);render()}});
+
+/* ===== DÉMO : CLIENTS À TROUVER + MISSIONS ===== */
+const DEMO_REQ=[
+{id:"r1",client:"Café Ambatu",titre:"Logo simple pour un café",budget:25,due:"3 jours",brief:"Créez un logo simple dans Canva (une tasse + le nom « Café Ambatu »). Livrez une capture du logo terminé."},
+{id:"r2",client:"Boutique Tanjona",titre:"Couverture Facebook",budget:20,due:"2 jours",brief:"Créez une couverture Facebook (820 × 312 px) bleu et blanc avec le texte « Boutique Tanjona ». Livrez une capture."},
+{id:"r3",client:"Association Vonjy",titre:"Traduction FR → EN (1 page)",budget:15,due:"2 jours",brief:"Traduisez un paragraphe de 10 lignes du français vers l'anglais dans un document. Livrez une capture du document."},
+{id:"r4",client:"Studio Fanja",titre:"Montage vidéo de 30 secondes",budget:40,due:"4 jours",brief:"Assemblez 5 photos et un texte en une courte vidéo avec un outil gratuit. Livrez une capture de la ligne de montage."},
+{id:"r5",client:"Dr Hery",titre:"Affiche A4 de prévention",budget:30,due:"3 jours",brief:"Créez une affiche A4 « Se laver les mains » dans Canva. Livrez une capture de l'affiche."},
+{id:"r7",client:"Hôtel Soa",titre:"5 descriptions de chambres",budget:35,due:"3 jours",brief:"Rédigez 5 courtes descriptions de chambres d'hôtel (3 phrases chacune) dans un document. Livrez une capture du document."},
+{id:"r8",client:"Radio Mada FM",titre:"Transcription de 2 minutes",budget:18,due:"2 jours",brief:"Écoutez un extrait audio de 2 minutes (vidéo libre de droits) et transcrivez-le dans un document. Livrez une capture."},
+{id:"r9",client:"Boutique Lova",titre:"Fiche de 10 produits",budget:28,due:"3 jours",brief:"Créez un tableau de 10 produits fictifs (nom, prix, description courte) dans Google Sheets. Livrez une capture."},
+{id:"r10",client:"École Mirary",titre:"CV d'une page",budget:22,due:"2 jours",brief:"Créez un CV d'une page pour un candidat fictif dans Canva ou Docs. Livrez une capture."},
+{id:"r6",client:"Agence Tovo",titre:"Saisie de 50 lignes dans un tableur",budget:12,due:"1 jour",brief:"Recopiez 50 lignes de noms et de numéros fictifs dans Google Sheets. Livrez une capture du tableau."}];
+const MIS=[
+"Ouvrez Fiverr, choisissez 3 gigs d'un même domaine et comparez prix, délai et avis dans un tableau.",
+"Remplissez votre checklist d'inscription (sans mot de passe ni pièce d'identité visibles) et copiez-la ici.",
+"Rédigez votre description de profil en 3 paragraphes à partir du modèle du Module 3.",
+"Dans Google Sheets, faites le tableau de concurrence avec 10 gigs (prix, délai, avis, points forts et faibles).",
+"Rédigez un brouillon complet de gig : titre, 5 tags, 3 packages et description.",
+"Calculez votre prix : temps estimé × tarif horaire, puis ajoutez la commission, pour 3 packages.",
+"Créez une image de couverture de gig (1280 × 769 px) dans Canva.",
+"Écrivez 3 messages de présentation personnalisés pour 3 commerces locaux fictifs ou réels.",
+"Simulez une commande avec un ami ou un proche en suivant les 7 étapes du Module 9.",
+"Créez votre tableau de suivi des commandes et revenus dans Google Sheets.",
+"Écrivez votre objectif de 90 jours et découpez-le en 12 actions hebdomadaires.",
+"Relisez 3 de vos messages à des clients et réécrivez-en un en l'améliorant."];
+function demoSections(d,c,tab){
+  const S=d.sec||"orders",nav=[["orders","📦 Orders"],["requests","🔎 Buyer requests"],["missions","🎯 Missions"],["portfolio","🏆 Portfolio"]];
+  return `<div class="tabs">${nav.map(n=>`<button class="${n[0]===S?'active':''}" data-act="demo-sec" data-id="${n[0]}">${n[1]}</button>`).join("")}</div>`+(S==="orders"?(c?demoOrder(c):demoList(d,tab)):S==="requests"?demoReq(d):S==="portfolio"?demoPortfolio(d):demoMis(d))}
+function demoPortfolio(d){
+  const w=d.commandes.filter(c=>c.proof&&c.statut==="terminee"),ms=d.missions||{},mk=Object.keys(ms);
+  const card=(ti,sub,img)=>`<div class="card"><h3>${esc(ti)}</h3><small style="color:var(--gray)">${sub}</small><img src="${img}" alt="Preuve" style="width:100%;border-radius:10px;margin-top:8px;border:1px solid #cbd5e1"></div>`;
+  return `<div class="box" style="max-width:none;margin-bottom:14px"><b>${w.length}</b> commandes terminées · <b>${mk.length}</b> missions. Vos preuves de travail sont gardées ici, sur cet appareil.</div>`+(w.length+mk.length?`<div class="grid">${w.map(c=>card(c.service,esc(c.client)+" · "+"⭐".repeat(c.note||5),c.proof)).join("")}${mk.map(k=>card("Mission "+(Number(k)+1)+" — "+mt(Number(k)),"Preuve envoyée",ms[k].proof)).join("")}</div>`:`<div class="box"><p>Terminez une commande ou une mission pour remplir votre portfolio.</p></div>`)}
+function demoReq(d){
+  const won=d.won||[],fb=d.fb||{},l=DEMO_REQ.filter(r=>!won.includes(r.id));
+  return `<div class="box" style="max-width:none;margin-bottom:14px"><b>Comment trouver un client :</b> lisez la demande, puis envoyez une offre avec <b>une présentation, ce que vous livrez, votre prix et votre délai</b>. Une offre incomplète sera refusée, comme sur le vrai Fiverr.</div>`+
+  (l.length?l.map(r=>`<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><h3>${esc(r.titre)}</h3><span class="badge">Budget ${r.budget} $ · ${esc(r.due)}</span></div><p style="color:var(--gray)">${esc(r.client)} cherche un vendeur. ${esc(r.brief)}</p>
+   <textarea id="of-${r.id}" style="font-family:inherit;font-size:.95rem" placeholder="Bonjour, je suis ... Je peux réaliser ... pour 25 $ en 3 jours. Pouvez-vous me préciser ... ?"></textarea>
+   <button class="btn small" style="margin-top:8px" data-act="demo-offer" data-id="${r.id}">Envoyer mon offre</button>${fb[r.id]?`<div class="msg err">${esc(fb[r.id])}</div>`:""}</div>`).join(""):`<div class="box"><p>Vous avez accepté toutes les demandes. Bravo ! Utilisez « Réinitialiser » pour recommencer.</p></div>`)}
+function demoMis(d){
+  const ms=d.missions||{},o=d.mopen;
+  if(o!=null&&MIS[o]){const m=ms[o];return `<button class="btn sec small" data-act="demo-mback">← Missions</button><div class="card" style="margin-top:12px"><h3>Mission ${o+1} — ${esc(mt(o))}</h3><p style="margin:8px 0"><b>Consigne :</b> ${esc(MIS[o])}</p><p style="font-size:.9rem;color:var(--gray)">Relisez d'abord le module correspondant. Sur la preuve, cachez toute information privée.</p>${([3,6,9].includes(o)&&((currentUser()||{}).mat||{}).app==="Téléphone")?`<div class="msg info">📱 Cette mission est plus confortable sur ordinateur. Sur téléphone, utilisez l'application Canva ou Google Sheets.</div>`:""}
+   <textarea id="ms-${o}" style="font-family:inherit;font-size:.95rem" placeholder="Écrivez ici votre travail ou votre réponse...">${m?esc(m.txt):""}</textarea>
+   <label style="margin-top:10px">📎 Capture d'écran (preuve de travail)</label><input id="proof" type="file" accept="image/*"><div id="pv" style="margin-top:8px">${m?`<img src="${m.proof}" style="max-width:220px;border-radius:8px">`:""}</div>
+   <button class="btn small" style="margin-top:10px" data-act="demo-msub" data-id="${o}">${m?"Renvoyer":"Envoyer ma mission"}</button></div>`}
+  return `<div class="box" style="max-width:none;margin-bottom:14px"><b>${Object.keys(ms).length}/${MIS.length}</b> missions envoyées. Faites la mission après chaque leçon.</div>`+MIS.map((x,i)=>`<div class="card" style="margin-bottom:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>${i+1}. ${esc(mt(i))}</b><br><small style="color:var(--gray)">${esc(x)}</small></span><span>${ms[i]?'<span class="badge ok">✅ Envoyée</span> ':''}<button class="btn small" data-act="demo-mopen" data-id="${i}">${ms[i]?"Revoir":"Commencer"}</button></span></div>`).join("")}
+function demoAction2(a,id,d,done){
+  if(a==="demo-sec"){d.sec=id;d.open=null;d.mopen=null;done();return true}
+  if(a==="demo-mission"){d.sec="missions";d.mopen=Number(id);demoSave(d);view="demo";menuOpen=false;DEMO_PROOF=null;render();window.scrollTo({top:0});return true}
+  if(a==="demo-mopen"){d.mopen=Number(id);DEMO_PROOF=null;done();return true}
+  if(a==="demo-mback"){d.mopen=null;done();return true}
+  if(a==="demo-msub"){const i=Number(id),el=document.getElementById("ms-"+i),tx=el?el.value.trim():"";d.missions=d.missions||{};
+    if(tx.length<30){d.msg="Écrivez votre travail ou votre réponse (au moins 30 caractères).";done();return true}
+    if(!DEMO_PROOF&&!d.missions[i]){d.msg="Joignez une capture d'écran comme preuve de travail.";done();return true}
+    d.missions[i]={txt:tx,proof:DEMO_PROOF||d.missions[i].proof};DEMO_PROOF=null;d.mopen=null;d.msg="Mission envoyée ✅ Bravo ! Passez à la suivante.";done();return true}
+  if(a==="demo-offer"){const r=DEMO_REQ.find(x=>x.id===id),el=document.getElementById("of-"+id),tx=el?el.value.trim():"";d.fb=d.fb||{};d.won=d.won||[];
+    const ok=tx.length>=60&&/\$|prix|price/i.test(tx)&&/jour|day|heure|hour/i.test(tx);
+    if(!ok){d.fb[id]="Le client répond : « Je ne vois pas clairement votre prix et votre délai. Pouvez-vous préciser ? » Une bonne offre contient : présentation, ce que vous livrez, prix, délai.";done();return true}
+    d.won.push(id);d.commandes.unshift({id:"c"+Date.now(),client:r.client,service:r.titre,montant:r.budget,statut:"nouvelle",due:r.due,brief:r.brief,messages:[{de:"client",txt:"Bonjour, j'accepte votre offre. "+r.brief}]});d.sec="orders";d.tab="active";d.msg="🎉 Offre acceptée ! Réalisez la tâche, puis livrez avec une capture d'écran.";done();return true}
+  return false}
 render();
 </script>
 </body>
